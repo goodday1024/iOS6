@@ -77,7 +77,7 @@ struct DesktopLayout: Codable {
         b.layer.shadowColor = UIColor.black.cgColor;b.layer.shadowOpacity = 0.4;b.layer.shadowRadius = 3
         let name:String
         if let s = system[id] { name = s.0
-            if !s.1.isEmpty { b.setBackgroundImage(UIImage(named:s.1),for:.normal) }
+            if !s.1.isEmpty { b.setBackgroundImage(RetroTheme.artwork(s.1),for:.normal) }
             else { b.setBackgroundImage(RetroTheme.gradient(UIColor(red:0.51,green:0.78,blue:0.97,alpha:1),UIColor(red:0.11,green:0.32,blue:0.69,alpha:1),height:57),for:.normal);b.setImage(UIImage(systemName:"airplane",withConfiguration:UIImage.SymbolConfiguration(pointSize:30,weight:.medium)),for:.normal);b.tintColor = .white }
         }
         else if let folder = desktop.folders[id] { name = desktop.folderNames[id] ?? "文件夹";b.backgroundColor = .darkGray;b.setTitle(folder.isEmpty ? "▦" : "▦ \(folder.count)",for:.normal) }

@@ -6,6 +6,11 @@ final class GradientView: UIView {
 }
 @MainActor enum RetroTheme {
     static let blue = UIColor(red:0.25,green:0.38,blue:0.51,alpha:1)
+    static func artwork(_ name:String) -> UIImage? {
+        if let image = UIImage(named:name) { return image }
+        guard let path = Bundle.main.path(forResource:name,ofType:"jpg") else { return nil }
+        return UIImage(contentsOfFile:path)
+    }
     static func gradient(_ top:UIColor,_ bottom:UIColor,height:CGFloat = 44) -> UIImage {
         UIGraphicsImageRenderer(size:CGSize(width:2,height:height)).image { context in
             let colors = [top.cgColor,bottom.cgColor] as CFArray
