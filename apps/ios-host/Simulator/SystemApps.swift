@@ -2,9 +2,14 @@ import UIKit
 @MainActor final class NotesController:UIViewController,UITextViewDelegate {
     private let text = UITextView()
     override func viewDidLoad() {
-        super.viewDidLoad();title = "备忘录";view.backgroundColor = UIColor(red:1,green:0.96,blue:0.8,alpha:1)
+        super.viewDidLoad();title = "备忘录"
+        let paper = UIGraphicsImageRenderer(size:CGSize(width:2,height:28)).image { context in
+            UIColor(red:1,green:0.98,blue:0.82,alpha:1).setFill();context.fill(CGRect(x:0,y:0,width:2,height:28))
+            UIColor(red:0.65,green:0.75,blue:0.72,alpha:0.55).setFill();context.fill(CGRect(x:0,y:27,width:2,height:1))
+        }
+        view.backgroundColor = UIColor(patternImage:paper)
         navigationItem.leftBarButtonItem = UIBarButtonItem(title:"主屏幕",style:.plain,target:self,action:#selector(home))
-        text.backgroundColor = view.backgroundColor;text.font = .systemFont(ofSize:20);text.text = UserDefaults.standard.string(forKey:"system.note");text.delegate = self;text.translatesAutoresizingMaskIntoConstraints = false;text.textContainerInset = UIEdgeInsets(top:20,left:16,bottom:20,right:16);view.addSubview(text)
+        text.backgroundColor = .clear;text.font = .systemFont(ofSize:20);text.text = UserDefaults.standard.string(forKey:"system.note");text.delegate = self;text.translatesAutoresizingMaskIntoConstraints = false;text.textContainerInset = UIEdgeInsets(top:18,left:23,bottom:20,right:16);view.addSubview(text)
         NSLayoutConstraint.activate([text.leadingAnchor.constraint(equalTo:view.leadingAnchor),text.trailingAnchor.constraint(equalTo:view.trailingAnchor),text.topAnchor.constraint(equalTo:view.safeAreaLayoutGuide.topAnchor),text.bottomAnchor.constraint(equalTo:view.keyboardLayoutGuide.topAnchor)])
     }
     func textViewDidChange(_ textView:UITextView) { UserDefaults.standard.set(textView.text,forKey:"system.note") }
@@ -34,7 +39,9 @@ import UIKit
 }
 @MainActor final class SettingsController:UITableViewController {
     private let labels = ["服务器地址","可信 Ed25519 公钥","登录 / 注册","退出账号","本地应用与权限","关于 Retro6"]
-    override func viewDidLoad() { super.viewDidLoad();title = "设置";navigationItem.leftBarButtonItem = UIBarButtonItem(title:"主屏幕",style:.plain,target:self,action:#selector(home));tableView.register(UITableViewCell.self,forCellReuseIdentifier:"setting") }
+    init() { super.init(style:.grouped) }
+    required init?(coder:NSCoder) { fatalError("init(coder:)") }
+    override func viewDidLoad() { super.viewDidLoad();title = "设置";navigationItem.leftBarButtonItem = UIBarButtonItem(title:"主屏幕",style:.plain,target:self,action:#selector(home));tableView.backgroundColor = UIColor(red:0.86,green:0.88,blue:0.90,alpha:1);tableView.register(UITableViewCell.self,forCellReuseIdentifier:"setting") }
     @objc private func home() { dismiss(animated:true) }
     override func tableView(_ tableView:UITableView,numberOfRowsInSection section:Int) -> Int { labels.count }
     override func tableView(_ tableView:UITableView,cellForRowAt indexPath:IndexPath) -> UITableViewCell { let c = UITableViewCell(style:.subtitle,reuseIdentifier:nil);c.textLabel?.text = labels[indexPath.row];c.accessoryType = .disclosureIndicator
@@ -54,7 +61,7 @@ import UIKit
         case 3:Task { _ = try? await API.shared.request("/v1/auth/logout",method:"POST");API.shared.token = nil;tableView.reloadData() }
         case 4:
             let apps = AppManager.shared.apps;let p = sheet("本地应用","\(apps.count) 个应用。更新保留数据，卸载删除数据。长按桌面图标可以编辑与卸载。");for app in apps { p.addAction(UIAlertAction(title:"\(app.manifest.name) · \(app.manifest.permissions.joined(separator:","))",style:.default){_ in let detail = self.sheet(app.manifest.name,"版本 \(app.version) · \(app.channel)\n包 ID \(app.manifest.id)\n私有存储：\(AppManager.shared.storage(app.id).count) 项");detail.addAction(UIAlertAction(title:"卸载，保留数据",style:.destructive){_ in do { try AppManager.shared.uninstall(app,keepData:true) } catch { self.showError(error) } });detail.addAction(UIAlertAction(title:"关闭",style:.cancel));self.present(detail,animated:true)}) };p.addAction(UIAlertAction(title:"关闭",style:.cancel));present(p,animated:true)
-        default:showError(SimError.message("Retro6 1.0.0\n独立复古应用生态，非 Apple 官方服务。只运行受限 Web 应用，不运行 IPA。\n拟物化颜色与图标为原创组合 / SF Symbols。"))
+        default:showError(SimError.message("Retro6 1.0.0\n独立复古应用生态，非 Apple 官方服务。只运行受限 Web 应用，不运行 IPA。\n界面参考 iOS 6，壁纸与系统图标来源见仓库素材说明。"))
         }
     }
 }

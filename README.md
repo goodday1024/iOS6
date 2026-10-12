@@ -2,6 +2,8 @@
 
 本工程提供 UIKit iOS 宿主、自建 Connect、Beta Center、应用商店、FastAPI API、受限 Web Runtime、SDK、CLI 和两个示例应用。应用是 `.simapp` 格式的 HTML/CSS/JavaScript 包，不是原生 IPA；本平台与 Apple 官方服务无关联。
 
+桌面、锁屏与网页模拟器使用 iOS 6 时期的水波壁纸和系统图标，并还原四列桌面、玻璃 Dock、深色状态栏、滑动解锁及拟物化导航栏。原始素材来源与权利说明见 [素材来源](docs/ASSETS.md)。
+
 ## 本地启动（最快方式）
 
 需要 Python 3.12。Web 前端与 API 同源托管，无需 Node 构建。

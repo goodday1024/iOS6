@@ -24,22 +24,22 @@ struct DesktopLayout: Codable {
     private let pager = UILabel()
     private var clock:Timer?
     private let manager = AppManager.shared
-    private let system:[String:(String,String,UIColor)] = ["notes":("备忘录","note.text",.systemYellow),"calculator":("计算器","plus.forwardslash.minus",.darkGray),"store":("应用商店","a.circle",.systemBlue),"beta":("Beta 测试","airplane",.systemTeal),"settings":("设置","gearshape",.gray)]
-    override var preferredStatusBarStyle:UIStatusBarStyle { .lightContent }
+    private let system:[String:(String,String)] = ["notes":("备忘录","ios6-notes"),"calculator":("计算器","ios6-calculator"),"store":("App Store","ios6-store"),"beta":("Beta 测试",""),"settings":("设置","ios6-settings")]
+    override var prefersStatusBarHidden:Bool { true }
     override func viewDidLoad() {
         super.viewDidLoad()
         if let data = UserDefaults.standard.data(forKey:"desktop"),let layout = try? JSONDecoder().decode(DesktopLayout.self,from:data) { desktop = layout }
-        let bg = GradientView([UIColor(red:0.36,green:0.53,blue:0.57,alpha:1),UIColor(red:0.08,green:0.18,blue:0.27,alpha:1)]);bg.translatesAutoresizingMaskIntoConstraints = false;view.addSubview(bg);NSLayoutConstraint.activate([bg.topAnchor.constraint(equalTo:view.topAnchor),bg.bottomAnchor.constraint(equalTo:view.bottomAnchor),bg.leadingAnchor.constraint(equalTo:view.leadingAnchor),bg.trailingAnchor.constraint(equalTo:view.trailingAnchor)])
-        let content = UIStackView();content.axis = .vertical;content.spacing = 8;content.translatesAutoresizingMaskIntoConstraints = false;view.addSubview(content)
-        status.textColor = .white;status.font = .systemFont(ofSize:12);status.textAlignment = .center;content.addArrangedSubview(status)
-        grid.axis = .vertical;grid.spacing = 12;content.addArrangedSubview(grid)
+        let bg = UIImageView(image:UIImage(named:"ios6-wallpaper"));bg.contentMode = .scaleAspectFill;bg.clipsToBounds = true;bg.translatesAutoresizingMaskIntoConstraints = false;view.addSubview(bg)
+        NSLayoutConstraint.activate([bg.topAnchor.constraint(equalTo:view.topAnchor),bg.bottomAnchor.constraint(equalTo:view.bottomAnchor),bg.leadingAnchor.constraint(equalTo:view.leadingAnchor),bg.trailingAnchor.constraint(equalTo:view.trailingAnchor)])
+        let content = UIStackView();content.axis = .vertical;content.spacing = 5;content.translatesAutoresizingMaskIntoConstraints = false;view.addSubview(content)
+        status.textColor = .white;status.font = .boldSystemFont(ofSize:11);status.textAlignment = .center;status.backgroundColor = UIColor.black.withAlphaComponent(0.35);status.heightAnchor.constraint(equalToConstant:22).isActive = true;content.addArrangedSubview(status)
+        status.isUserInteractionEnabled = true;status.addGestureRecognizer(UITapGestureRecognizer(target:self,action:#selector(lockFromStatus)))
+        grid.axis = .vertical;grid.spacing = 8;content.addArrangedSubview(grid)
         let spacer = UIView();content.addArrangedSubview(spacer)
         pager.textAlignment = .center;pager.textColor = .white;content.addArrangedSubview(pager)
-        let controls = UIStackView();controls.distribution = .fillEqually;controls.spacing = 8
-        let actions: [(String, () -> Void)] = [("‹",{[weak self] in self?.changePage(-1)}),("最近",{[weak self] in self?.switcher()}),("编辑",{[weak self] in self?.iconEditing.toggle();self?.refresh()}),("锁屏",{[weak self] in self?.lock()}),("›",{[weak self] in self?.changePage(1)})]
-        for (title,action) in actions { controls.addArrangedSubview(RetroTheme.button(title,action:action)) };content.addArrangedSubview(controls)
-        dock.distribution = .fillEqually;dock.spacing = 12;dock.backgroundColor = UIColor.white.withAlphaComponent(0.2);dock.layer.cornerRadius = 12;dock.isLayoutMarginsRelativeArrangement = true;dock.layoutMargins = UIEdgeInsets(top:10,left:10,bottom:10,right:10);content.addArrangedSubview(dock)
-        NSLayoutConstraint.activate([content.topAnchor.constraint(equalTo:view.safeAreaLayoutGuide.topAnchor),content.bottomAnchor.constraint(equalTo:view.safeAreaLayoutGuide.bottomAnchor,constant:-10),content.leadingAnchor.constraint(equalTo:view.leadingAnchor,constant:14),content.trailingAnchor.constraint(equalTo:view.trailingAnchor,constant:-14),spacer.heightAnchor.constraint(greaterThanOrEqualToConstant:5)])
+        dock.distribution = .fillEqually;dock.spacing = 6;dock.backgroundColor = UIColor.white.withAlphaComponent(0.32);dock.layer.borderColor = UIColor.white.withAlphaComponent(0.62).cgColor;dock.layer.borderWidth = 1;dock.layer.shadowColor = UIColor.black.cgColor;dock.layer.shadowOpacity = 0.35;dock.layer.shadowRadius = 12;dock.isLayoutMarginsRelativeArrangement = true;dock.layoutMargins = UIEdgeInsets(top:8,left:10,bottom:8,right:10);content.addArrangedSubview(dock)
+        dock.isUserInteractionEnabled = true;let doubleTap = UITapGestureRecognizer(target:self,action:#selector(showSwitcher));doubleTap.numberOfTapsRequired = 2;dock.addGestureRecognizer(doubleTap)
+        NSLayoutConstraint.activate([content.topAnchor.constraint(equalTo:view.safeAreaLayoutGuide.topAnchor),content.bottomAnchor.constraint(equalTo:view.safeAreaLayoutGuide.bottomAnchor),content.leadingAnchor.constraint(equalTo:view.leadingAnchor),content.trailingAnchor.constraint(equalTo:view.trailingAnchor),spacer.heightAnchor.constraint(greaterThanOrEqualToConstant:4)])
         let left = UISwipeGestureRecognizer(target:self,action:#selector(swipe));left.direction = .left;view.addGestureRecognizer(left)
         let right = UISwipeGestureRecognizer(target:self,action:#selector(swipe));right.direction = .right;view.addGestureRecognizer(right)
         NotificationCenter.default.addObserver(self,selector:#selector(refresh),name:Notification.Name("InstalledChanged"),object:nil)
@@ -49,7 +49,9 @@ struct DesktopLayout: Codable {
     }
     @objc private func background() { sessions.values.forEach{$0.event("pause")} }
     @objc private func memory() { for (id,session) in sessions where session.presentingViewController == nil && session.navigationController?.presentingViewController == nil { session.dispose();sessions.removeValue(forKey:id) } }
-    private func tick() { let f = DateFormatter();f.dateFormat = "HH:mm";status.text = "Retro6  ▰                     \(f.string(from:Date()))                     ▰";if let label = lockView?.viewWithTag(6) as? UILabel { label.text = f.string(from:Date()) } }
+    @objc private func lockFromStatus() { lock() }
+    @objc private func showSwitcher() { switcher() }
+    private func tick() { let f = DateFormatter();f.dateFormat = "HH:mm";status.text = "●●●  Retro6               \(f.string(from:Date()))              ▰  100%";if let label = lockView?.viewWithTag(6) as? UILabel { label.text = f.string(from:Date()) } }
     private func persist() { UserDefaults.standard.set(try? JSONEncoder().encode(desktop),forKey:"desktop") }
     private func changePage(_ delta:Int) { page = max(0,min(desktop.pages.count-1,page+delta));refresh() }
     @objc private func swipe(_ gesture:UISwipeGestureRecognizer) { if lockView == nil { changePage(gesture.direction == .left ? 1 : -1) } }
@@ -64,23 +66,27 @@ struct DesktopLayout: Codable {
         page = min(page,desktop.pages.count-1);persist()
         grid.arrangedSubviews.forEach{$0.removeFromSuperview()};dock.arrangedSubviews.forEach{$0.removeFromSuperview()}
         let items = desktop.pages[page]
-        for row in 0..<4 { let stack = UIStackView();stack.axis = .horizontal;stack.distribution = .fillEqually;stack.spacing = 12
-            for col in 0..<4 { let index = row*4+col;if index < items.count { stack.addArrangedSubview(icon(items[index])) } else { let empty = UIView();empty.heightAnchor.constraint(equalToConstant:65).isActive = true;stack.addArrangedSubview(empty) } };grid.addArrangedSubview(stack) }
-        for id in desktop.dock { dock.addArrangedSubview(icon(id)) }
-        pager.text = (0..<desktop.pages.count).map{$0 == page ? "●" : "○"}.joined(separator:"  ")+(iconEditing ? "  点图标编辑" : "")
+        for row in 0..<4 { let stack = UIStackView();stack.axis = .horizontal;stack.distribution = .fillEqually;stack.spacing = 4
+            for col in 0..<4 { let index = row*4+col;if index < items.count { stack.addArrangedSubview(icon(items[index])) } else { let empty = UIView();empty.heightAnchor.constraint(equalToConstant:77).isActive = true;stack.addArrangedSubview(empty) } };grid.addArrangedSubview(stack) }
+        for id in desktop.dock { dock.addArrangedSubview(icon(id,docked:true)) }
+        pager.text = (0..<desktop.pages.count).map{$0 == page ? "●" : "○"}.joined(separator:"  ")+(iconEditing ? "  长按图标编辑" : "");pager.font = .boldSystemFont(ofSize:12);pager.layer.shadowColor = UIColor.black.cgColor;pager.layer.shadowOpacity = 0.8;pager.layer.shadowRadius = 2
     }
-    private func icon(_ id:String) -> UIView {
-        let stack = UIStackView();stack.axis = .vertical;stack.alignment = .center;stack.spacing = 5
-        let b = UIButton(type:.custom);b.accessibilityIdentifier = id;b.layer.cornerRadius = 12;b.clipsToBounds = true;b.layer.borderColor = UIColor.white.withAlphaComponent(0.6).cgColor;b.layer.borderWidth = 1
+    private func icon(_ id:String,docked:Bool = false) -> UIView {
+        let stack = UIStackView();stack.axis = .vertical;stack.alignment = .center;stack.spacing = 4
+        let b = UIButton(type:.custom);b.accessibilityIdentifier = id;b.layer.cornerRadius = 12;b.clipsToBounds = true
+        b.layer.shadowColor = UIColor.black.cgColor;b.layer.shadowOpacity = 0.4;b.layer.shadowRadius = 3
         let name:String
-        if let s = system[id] { name = s.0;b.backgroundColor = s.2;b.setImage(UIImage(systemName:s.1,withConfiguration:UIImage.SymbolConfiguration(pointSize:26,weight:.medium)),for:.normal);b.tintColor = .white }
+        if let s = system[id] { name = s.0
+            if !s.1.isEmpty { b.setBackgroundImage(UIImage(named:s.1),for:.normal) }
+            else { b.setBackgroundImage(RetroTheme.gradient(UIColor(red:0.51,green:0.78,blue:0.97,alpha:1),UIColor(red:0.11,green:0.32,blue:0.69,alpha:1),height:57),for:.normal);b.setImage(UIImage(systemName:"airplane",withConfiguration:UIImage.SymbolConfiguration(pointSize:30,weight:.medium)),for:.normal);b.tintColor = .white }
+        }
         else if let folder = desktop.folders[id] { name = desktop.folderNames[id] ?? "文件夹";b.backgroundColor = .darkGray;b.setTitle(folder.isEmpty ? "▦" : "▦ \(folder.count)",for:.normal) }
-        else if let a = manager.apps.first(where:{$0.id == id}) { name = a.manifest.name;b.setImage(UIImage(contentsOfFile:manager.bundle(a).appendingPathComponent(a.manifest.icon).path),for:.normal) }
+        else if let a = manager.apps.first(where:{$0.id == id}) { name = a.manifest.name;b.setBackgroundImage(UIImage(contentsOfFile:manager.bundle(a).appendingPathComponent(a.manifest.icon).path),for:.normal) }
         else { name = "未知" }
-        b.widthAnchor.constraint(equalToConstant:44).isActive = true;b.heightAnchor.constraint(equalToConstant:44).isActive = true
+        b.widthAnchor.constraint(equalToConstant:docked ? 53 : 57).isActive = true;b.heightAnchor.constraint(equalToConstant:docked ? 53 : 57).isActive = true
         b.addAction(UIAction{[weak self]_ in guard let self else{return};self.iconEditing ? self.edit(id) : self.open(id)},for:.touchUpInside)
         b.addGestureRecognizer(UILongPressGestureRecognizer(target:self,action:#selector(longPress)))
-        let label = UILabel();label.text = name;label.font = .systemFont(ofSize:11);label.textAlignment = .center;label.textColor = .white;label.numberOfLines = 1;label.adjustsFontSizeToFitWidth = true
+        let label = UILabel();label.text = name;label.font = .systemFont(ofSize:docked ? 10 : 11,weight:.medium);label.textAlignment = .center;label.textColor = .white;label.numberOfLines = 1;label.adjustsFontSizeToFitWidth = true;label.shadowColor = .black;label.shadowOffset = CGSize(width:0,height:1)
         stack.addArrangedSubview(b);stack.addArrangedSubview(label);return stack
     }
     @objc private func longPress(_ gesture:UILongPressGestureRecognizer) { if gesture.state == .began, let id = gesture.view?.accessibilityIdentifier { iconEditing = true;edit(id) } }
@@ -118,14 +124,15 @@ struct DesktopLayout: Codable {
     private func switcher() { let a = sheet("最近运行");for id in recent where sessions[id] != nil { a.addAction(UIAlertAction(title:sessions[id]!.app.manifest.name,style:.default){_ in self.open(id)}) };a.addAction(UIAlertAction(title:"退出全部应用",style:.destructive){_ in self.sessions.values.forEach{$0.dispose()};self.sessions.removeAll()});a.addAction(UIAlertAction(title:"关闭",style:.cancel));present(a,animated:true) }
     private func lock() {
         if lockView != nil { return }
-        let lock = GradientView([UIColor.black.withAlphaComponent(0.4),UIColor(red:0.06,green:0.16,blue:0.24,alpha:1)]);lock.translatesAutoresizingMaskIntoConstraints = false;view.addSubview(lock);lockView = lock
+        let lock = UIView();lock.backgroundColor = UIColor.black.withAlphaComponent(0.08);lock.translatesAutoresizingMaskIntoConstraints = false;view.addSubview(lock);lockView = lock
         NSLayoutConstraint.activate([lock.topAnchor.constraint(equalTo:view.topAnchor),lock.bottomAnchor.constraint(equalTo:view.bottomAnchor),lock.leadingAnchor.constraint(equalTo:view.leadingAnchor),lock.trailingAnchor.constraint(equalTo:view.trailingAnchor)])
-        let time = UILabel();time.tag = 6;time.font = .systemFont(ofSize:66,weight:.thin);time.textColor = .white;time.textAlignment = .center
-        let date = UILabel();date.text = Date().formatted(date:.complete,time:.omitted);date.textColor = .white;date.textAlignment = .center;date.font = .systemFont(ofSize:16)
-        let stack = UIStackView(arrangedSubviews:[time,date]);stack.axis = .vertical;stack.translatesAutoresizingMaskIntoConstraints = false;lock.addSubview(stack)
-        let slider = UISlider();slider.minimumValue = 0;slider.maximumValue = 1;slider.tintColor = .lightGray;slider.translatesAutoresizingMaskIntoConstraints = false;slider.accessibilityLabel = "滑动解锁";slider.addAction(UIAction{[weak self]_ in if slider.value > 0.95 { self?.unlock() } else { slider.value = 0 } },for:[.touchUpInside,.touchUpOutside]);lock.addSubview(slider)
-        let hint = UILabel();hint.text = "滑动解锁  ›";hint.textColor = .white;hint.textAlignment = .center;hint.translatesAutoresizingMaskIntoConstraints = false;lock.addSubview(hint)
-        NSLayoutConstraint.activate([stack.topAnchor.constraint(equalTo:lock.safeAreaLayoutGuide.topAnchor,constant:40),stack.leadingAnchor.constraint(equalTo:lock.leadingAnchor),stack.trailingAnchor.constraint(equalTo:lock.trailingAnchor),slider.bottomAnchor.constraint(equalTo:lock.safeAreaLayoutGuide.bottomAnchor,constant:-55),slider.leadingAnchor.constraint(equalTo:lock.leadingAnchor,constant:40),slider.trailingAnchor.constraint(equalTo:lock.trailingAnchor,constant:-40),hint.topAnchor.constraint(equalTo:slider.bottomAnchor,constant:10),hint.centerXAnchor.constraint(equalTo:lock.centerXAnchor)])
+        let header = GradientView([UIColor.black.withAlphaComponent(0.65),UIColor.black.withAlphaComponent(0.12)]);header.translatesAutoresizingMaskIntoConstraints = false;lock.addSubview(header)
+        let time = UILabel();time.tag = 6;time.font = .systemFont(ofSize:66,weight:.thin);time.textColor = .white;time.textAlignment = .center;time.shadowColor = .black;time.shadowOffset = CGSize(width:0,height:1)
+        let date = UILabel();let df = DateFormatter();df.locale = Locale(identifier:"zh_CN");df.dateFormat = "M月d日 EEEE";date.text = df.string(from:Date());date.textColor = .white;date.textAlignment = .center;date.font = .systemFont(ofSize:17);date.shadowColor = .black;date.shadowOffset = CGSize(width:0,height:1)
+        let stack = UIStackView(arrangedSubviews:[time,date]);stack.axis = .vertical;stack.translatesAutoresizingMaskIntoConstraints = false;header.addSubview(stack)
+        let footer = GradientView([UIColor.black.withAlphaComponent(0.07),UIColor.black.withAlphaComponent(0.68)]);footer.translatesAutoresizingMaskIntoConstraints = false;lock.addSubview(footer)
+        let slider = RetroUnlockSlider();slider.translatesAutoresizingMaskIntoConstraints = false;slider.onUnlock = {[weak self] in self?.unlock()};footer.addSubview(slider)
+        NSLayoutConstraint.activate([header.topAnchor.constraint(equalTo:lock.topAnchor),header.leadingAnchor.constraint(equalTo:lock.leadingAnchor),header.trailingAnchor.constraint(equalTo:lock.trailingAnchor),header.bottomAnchor.constraint(equalTo:lock.safeAreaLayoutGuide.topAnchor,constant:155),stack.bottomAnchor.constraint(equalTo:header.bottomAnchor,constant:-16),stack.leadingAnchor.constraint(equalTo:header.leadingAnchor),stack.trailingAnchor.constraint(equalTo:header.trailingAnchor),footer.bottomAnchor.constraint(equalTo:lock.bottomAnchor),footer.leadingAnchor.constraint(equalTo:lock.leadingAnchor),footer.trailingAnchor.constraint(equalTo:lock.trailingAnchor),footer.heightAnchor.constraint(equalToConstant:150),slider.centerYAnchor.constraint(equalTo:footer.centerYAnchor),slider.leadingAnchor.constraint(equalTo:footer.leadingAnchor,constant:22),slider.trailingAnchor.constraint(equalTo:footer.trailingAnchor,constant:-22),slider.heightAnchor.constraint(equalToConstant:55)])
         tick()
     }
     private func unlock() { UIView.animate(withDuration:0.3,animations:{self.lockView?.alpha = 0}){_ in self.lockView?.removeFromSuperview();self.lockView = nil} }
