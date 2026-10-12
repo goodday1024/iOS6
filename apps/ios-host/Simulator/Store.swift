@@ -5,12 +5,13 @@ import UIKit
     private var filtered:[[String:Any]] = []
     private var installing = Set<String>()
     private let search = UISearchController(searchResultsController:nil)
-    init(beta:Bool) { self.beta = beta;super.init(style:.insetGrouped);title = beta ? "Beta 测试" : "应用商店" }
+    init(beta:Bool) { self.beta = beta;super.init(style:.grouped);title = beta ? "Beta 测试" : "App Store" }
     required init?(coder:NSCoder) { fatalError("init(coder:)") }
     override func viewDidLoad() {
         super.viewDidLoad();navigationItem.leftBarButtonItem = UIBarButtonItem(title:"主屏幕",style:.plain,target:self,action:#selector(home))
         navigationItem.rightBarButtonItem = UIBarButtonItem(title:beta ? "兑换" : "更新",style:.plain,target:self,action:#selector(extra))
-        search.searchResultsUpdater = self;search.obscuresBackgroundDuringPresentation = false;search.searchBar.placeholder = "搜索应用或分类";navigationItem.searchController = search
+        search.searchResultsUpdater = self;search.obscuresBackgroundDuringPresentation = false;search.searchBar.placeholder = "搜索应用或分类";search.searchBar.sizeToFit();tableView.tableHeaderView = search.searchBar;definesPresentationContext = true
+        tableView.backgroundColor = UIColor(red:0.86,green:0.88,blue:0.90,alpha:1);tableView.rowHeight = 70
         refreshControl = UIRefreshControl();refreshControl?.addTarget(self,action:#selector(load),for:.valueChanged);load()
         let footer = UILabel(frame:CGRect(x:0,y:0,width:300,height:60));footer.text = "第三方虚拟应用生态，与 Apple 无关联";footer.font = .systemFont(ofSize:11);footer.textColor = .secondaryLabel;footer.textAlignment = .center;tableView.tableFooterView = footer
     }
