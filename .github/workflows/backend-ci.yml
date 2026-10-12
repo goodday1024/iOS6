@@ -1,0 +1,37 @@
+name: Backend and SDK CI
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q
+      - run: node --check apps/developer-web/app.js && node tests/sdk.test.cjs
+      - run: python packages/simapp-cli/simapp.py pack examples/pixel-notes -o PixelNotes.simapp
+      - run: python packages/simapp-cli/simapp.py pack examples/timer -o FocusTimer.simapp
+      - uses: actions/upload-artifact@v4
+        with: {name: example-apps, path: '*.simapp'}
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: {POSTGRES_USER: retro, POSTGRES_PASSWORD: ci-password-only, POSTGRES_DB: retro6}
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U retro -d retro6" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://retro:ci-password-only@localhost:5432/retro6
+      DATA_DIR: /tmp/retro6-ci
+      TEST_USE_DATABASE_ENV: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r requirements.txt
+      - run: mkdir -p /tmp/retro6-ci && python -m alembic upgrade head
+      - run: python -m pytest -q

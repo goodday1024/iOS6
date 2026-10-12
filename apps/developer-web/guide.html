@@ -1,0 +1,9 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="style.css"><title>Retro6 开发指南</title><body><main style="margin:auto;max-width:850px"><a href="/">← Connect</a><h1>写一个真正可安装的应用</h1><section class="card"><h2>1. 创建应用目录</h2><p>包含 manifest.json、index.html 和 assets/icon.png。入口内使用宿主注入的 Simulator SDK，不需要引入 sdk.js。</p><pre>{
+ "schemaVersion": 1, "id": "com.example.notes",
+ "name": "我的笔记", "version": "1.0.0",
+ "runtime": "web", "entry": "index.html",
+ "permissions": ["storage"], "orientation": "portrait",
+ "icon": "assets/icon.png"
+}</pre><h2>2. 使用 SDK 保存数据</h2><pre>await Simulator.storage.set('note', 'Hello iOS 6');
+const note = await Simulator.storage.get('note');
+await Simulator.ui.alert('保存成功');</pre><h2>3. 打包与测试</h2><pre>python packages/simapp-cli/simapp.py pack examples/pixel-notes -o PixelNotes.simapp</pre><p>Connect 创建应用 → 上传 → 创建测试组 → 生成邀请码。测试者在 Beta 中兑换邀请码、安装和提交反馈。</p><h2>4. 审核与发布</h2><p>提交审核后由独立审核员处理。审核通过后，开发者点击正式发布，商店才会展示应用。相同版本不可重复上传，更新请增加版本号。</p><h2>运行时边界</h2><p>默认不允许外部网络、框架、摄像头或任意文件访问。iOS 支持多文件本地资源；网页预览仅支持内联 HTML/CSS/JS。卸载删除私有数据，更新保留数据。Beta 到期后下载与反馈权限失效，已下载网页包不支持远程擦除。</p></section></main></body></html>

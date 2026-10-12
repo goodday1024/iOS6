@@ -1,0 +1,36 @@
+name: Retro6
+options:
+  bundleIdPrefix: fun.zihang.retro6
+  deploymentTarget:
+    iOS: '16.0'
+settings:
+  base:
+    SWIFT_VERSION: '5.0'
+    TARGETED_DEVICE_FAMILY: '1,2'
+    CODE_SIGNING_ALLOWED: NO
+packages:
+  ZIPFoundation:
+    url: https://github.com/weichsel/ZIPFoundation.git
+    exactVersion: 0.9.19
+targets:
+  Retro6:
+    type: application
+    platform: iOS
+    sources: [Simulator]
+    dependencies:
+      - package: ZIPFoundation
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fun.zihang.retro6
+        INFOPLIST_FILE: Info.plist
+        MARKETING_VERSION: 1.0.0
+        CURRENT_PROJECT_VERSION: 1
+    scheme:
+      gatherCoverageData: true
+      testTargets: [Retro6Tests]
+  Retro6Tests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [SimulatorTests]
+    dependencies:
+      - target: Retro6

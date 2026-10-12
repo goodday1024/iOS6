@@ -1,0 +1,11 @@
+.git
+.env
+data
+.venv
+.pytest_cache
+__pycache__
+apps/ios-host
+examples
+tests
+docs
+infra

@@ -1,0 +1,1 @@
+{"schemaVersion":1,"id":"com.retro.pixelnotes","name":"Pixel Notes","version":"1.0.0","runtime":"web","entry":"index.html","minSimulatorVersion":"1.0.0","permissions":["storage"],"orientation":"portrait","icon":"assets/icon.png"}
