@@ -6,8 +6,8 @@ import UIKit
     }
 }
 struct DesktopLayout: Codable {
-    var pages:[[String]] = [["notes","calculator","store","beta","settings"]]
-    var dock:[String] = ["store","beta","notes","settings"]
+    var pages:[[String]] = [["notes","calculator"]]
+    var dock:[String] = ["store","beta","settings"]
     var folders:[String:[String]] = [:]
     var folderNames:[String:String] = [:]
 }
@@ -57,7 +57,7 @@ struct DesktopLayout: Codable {
     @objc private func swipe(_ gesture:UISwipeGestureRecognizer) { if lockView == nil { changePage(gesture.direction == .left ? 1 : -1) } }
     @objc private func refresh() {
         let ids = Set(manager.apps.map(\.id)+Array(system.keys)+Array(desktop.folders.keys))
-        desktop.pages = desktop.pages.map{$0.filter{ids.contains($0)}}
+        desktop.pages = desktop.pages.map{$0.filter{ids.contains($0) && !desktop.dock.contains($0)}}
         for key in desktop.folders.keys { desktop.folders[key] = desktop.folders[key]?.filter{ids.contains($0)} }
         desktop.dock = desktop.dock.filter{ids.contains($0)}
         let placed = Set(desktop.pages.flatMap{$0}+desktop.dock+desktop.folders.values.flatMap{$0})
