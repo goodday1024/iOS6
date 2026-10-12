@@ -1,6 +1,12 @@
 import XCTest
+import UIKit
 @testable import Retro6
 final class SecurityTests:XCTestCase {
+    @MainActor func testIOS6ArtworkIsBundled() {
+        for name in ["ios6-wallpaper","ios6-notes","ios6-calculator","ios6-settings","ios6-store"] {
+            XCTAssertNotNil(UIImage(named:name),"Missing iOS 6 artwork: \(name)")
+        }
+    }
     func testPathConfinement() {
         for path in ["../secret","/tmp/a","assets/../../x","assets\\x","a:b",".env","a/.hidden"] { XCTAssertFalse(safeRelativePath(path),path) }
         for path in ["index.html","assets/icon.png","css/style.css"] { XCTAssertTrue(safeRelativePath(path),path) }
