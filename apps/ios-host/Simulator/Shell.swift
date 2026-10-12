@@ -14,7 +14,7 @@ struct DesktopLayout: Codable {
 @MainActor final class ShellController:UIViewController {
     private var desktop = DesktopLayout()
     private var page = 0
-    private var editing = false
+    private var iconEditing = false
     private var lockView:UIView?
     private var sessions:[String:WebRuntime] = [:]
     private var recent:[String] = []
@@ -36,7 +36,7 @@ struct DesktopLayout: Codable {
         let spacer = UIView();content.addArrangedSubview(spacer)
         pager.textAlignment = .center;pager.textColor = .white;content.addArrangedSubview(pager)
         let controls = UIStackView();controls.distribution = .fillEqually;controls.spacing = 8
-        let actions: [(String, () -> Void)] = [("‹",{[weak self] in self?.changePage(-1)}),("最近",{[weak self] in self?.switcher()}),("编辑",{[weak self] in self?.editing.toggle();self?.refresh()}),("锁屏",{[weak self] in self?.lock()}),("›",{[weak self] in self?.changePage(1)})]
+        let actions: [(String, () -> Void)] = [("‹",{[weak self] in self?.changePage(-1)}),("最近",{[weak self] in self?.switcher()}),("编辑",{[weak self] in self?.iconEditing.toggle();self?.refresh()}),("锁屏",{[weak self] in self?.lock()}),("›",{[weak self] in self?.changePage(1)})]
         for (title,action) in actions { controls.addArrangedSubview(RetroTheme.button(title,action:action)) };content.addArrangedSubview(controls)
         dock.distribution = .fillEqually;dock.spacing = 12;dock.backgroundColor = UIColor.white.withAlphaComponent(0.2);dock.layer.cornerRadius = 12;dock.isLayoutMarginsRelativeArrangement = true;dock.layoutMargins = UIEdgeInsets(top:10,left:10,bottom:10,right:10);content.addArrangedSubview(dock)
         NSLayoutConstraint.activate([content.topAnchor.constraint(equalTo:view.safeAreaLayoutGuide.topAnchor),content.bottomAnchor.constraint(equalTo:view.safeAreaLayoutGuide.bottomAnchor,constant:-10),content.leadingAnchor.constraint(equalTo:view.leadingAnchor,constant:14),content.trailingAnchor.constraint(equalTo:view.trailingAnchor,constant:-14),spacer.heightAnchor.constraint(greaterThanOrEqualToConstant:5)])
@@ -67,7 +67,7 @@ struct DesktopLayout: Codable {
         for row in 0..<4 { let stack = UIStackView();stack.axis = .horizontal;stack.distribution = .fillEqually;stack.spacing = 12
             for col in 0..<4 { let index = row*4+col;if index < items.count { stack.addArrangedSubview(icon(items[index])) } else { let empty = UIView();empty.heightAnchor.constraint(equalToConstant:65).isActive = true;stack.addArrangedSubview(empty) } };grid.addArrangedSubview(stack) }
         for id in desktop.dock { dock.addArrangedSubview(icon(id)) }
-        pager.text = (0..<desktop.pages.count).map{$0 == page ? "●" : "○"}.joined(separator:"  ")+(editing ? "  点图标编辑" : "")
+        pager.text = (0..<desktop.pages.count).map{$0 == page ? "●" : "○"}.joined(separator:"  ")+(iconEditing ? "  点图标编辑" : "")
     }
     private func icon(_ id:String) -> UIView {
         let stack = UIStackView();stack.axis = .vertical;stack.alignment = .center;stack.spacing = 5
@@ -78,12 +78,12 @@ struct DesktopLayout: Codable {
         else if let a = manager.apps.first(where:{$0.id == id}) { name = a.manifest.name;b.setImage(UIImage(contentsOfFile:manager.bundle(a).appendingPathComponent(a.manifest.icon).path),for:.normal) }
         else { name = "未知" }
         b.widthAnchor.constraint(equalToConstant:44).isActive = true;b.heightAnchor.constraint(equalToConstant:44).isActive = true
-        b.addAction(UIAction{[weak self]_ in guard let self else{return};self.editing ? self.edit(id) : self.open(id)},for:.touchUpInside)
+        b.addAction(UIAction{[weak self]_ in guard let self else{return};self.iconEditing ? self.edit(id) : self.open(id)},for:.touchUpInside)
         b.addGestureRecognizer(UILongPressGestureRecognizer(target:self,action:#selector(longPress)))
         let label = UILabel();label.text = name;label.font = .systemFont(ofSize:11);label.textAlignment = .center;label.textColor = .white;label.numberOfLines = 1;label.adjustsFontSizeToFitWidth = true
         stack.addArrangedSubview(b);stack.addArrangedSubview(label);return stack
     }
-    @objc private func longPress(_ gesture:UILongPressGestureRecognizer) { if gesture.state == .began, let id = gesture.view?.accessibilityIdentifier { editing = true;edit(id) } }
+    @objc private func longPress(_ gesture:UILongPressGestureRecognizer) { if gesture.state == .began, let id = gesture.view?.accessibilityIdentifier { iconEditing = true;edit(id) } }
     private func edit(_ id:String) {
         let alert = sheet("编辑图标")
         alert.addAction(UIAlertAction(title:"移到下一页",style:.default){_ in self.removeFromLayout(id);if self.page+1 >= self.desktop.pages.count { self.desktop.pages.append([]) };let target = self.page+1;if self.desktop.pages[target].count<16 { self.desktop.pages[target].append(id) } else { self.desktop.pages.append([id]) };self.refresh()})
@@ -96,7 +96,7 @@ struct DesktopLayout: Codable {
             alert.addAction(UIAlertAction(title:"解散文件夹",style:.destructive){_ in let contents = self.desktop.folders.removeValue(forKey:id) ?? [];self.desktop.folderNames.removeValue(forKey:id);self.removeFromLayout(id);self.desktop.pages.append(contents);self.refresh()})
         }
         if let a = manager.apps.first(where:{$0.id == id}) { alert.addAction(UIAlertAction(title:"卸载并删除数据",style:.destructive){_ in do { self.sessions[a.id]?.dispose();self.sessions.removeValue(forKey:a.id);try self.manager.uninstall(a);self.refresh() } catch { self.showError(error) }}) }
-        alert.addAction(UIAlertAction(title:"完成编辑",style:.cancel){_ in self.editing = false;self.refresh()});present(alert,animated:true)
+        alert.addAction(UIAlertAction(title:"完成编辑",style:.cancel){_ in self.iconEditing = false;self.refresh()});present(alert,animated:true)
     }
     private func removeFromLayout(_ id:String) { desktop.pages = desktop.pages.map{$0.filter{$0 != id}};desktop.dock.removeAll{$0 == id};for f in desktop.folders.keys { desktop.folders[f]?.removeAll{$0 == id} } }
     private func open(_ id:String) {
